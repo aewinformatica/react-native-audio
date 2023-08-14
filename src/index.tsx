@@ -1,9 +1,9 @@
-//Com o modo estrito, você não pode, por exemplo, usar variáveis ​​não declaradas.
 'use strict';
 
 import {
   NativeModules,
   NativeAppEventEmitter,
+  DeviceEventEmitter,
   PermissionsAndroid,
   Platform
 } from "react-native";
@@ -14,7 +14,7 @@ const LINKING_ERROR =
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo Go\n';
 
-const Audio = NativeModules.Audio
+const AudioRecorderManager = NativeModules.Audio
   ? NativeModules.Audio
   : new Proxy(
       {},
@@ -25,9 +25,6 @@ const Audio = NativeModules.Audio
       }
     );
 
-function multiply(a: number, b: number): Promise<number> {
-  return Audio.multiply(a, b);
-}
 var AudioRecorder = {
   prepareRecordingAtPath: function(path, options) {
     if (this.progressSubscription) this.progressSubscription.remove();
@@ -54,17 +51,16 @@ var AudioRecorder = {
       AudioQuality: 'High',
       AudioEncoding: 'ima4',
       OutputFormat: 'mpeg_4',
-      MeteringEnabled: false,
+      MeteringEnabled: true,
       MeasurementMode: false,
       AudioEncodingBitRate: 32000,
-      IncludeBase64: false,
-      AudioSource: 0
+      IncludeBase64: false
     };
 
     var recordingOptions = {...defaultOptions, ...options};
 
     if (Platform.OS === 'ios') {
-      Audio.prepareRecordingAtPath(
+      AudioRecorderManager.prepareRecordingAtPath(
         path,
         recordingOptions.SampleRate,
         recordingOptions.Channels,
@@ -75,25 +71,25 @@ var AudioRecorder = {
         recordingOptions.IncludeBase64
       );
     } else {
-      return Audio.prepareRecordingAtPath(path, recordingOptions);
+      return AudioRecorderManager.prepareRecordingAtPath(path, recordingOptions);
     }
   },
   startRecording: function() {
-    return Audio.startRecording();
+    return AudioRecorderManager.startRecording();
   },
   pauseRecording: function() {
-    return Audio.pauseRecording();
+    return AudioRecorderManager.pauseRecording();
   },
   resumeRecording: function() {
-    return Audio.resumeRecording();
+    return AudioRecorderManager.resumeRecording();
   },
   stopRecording: function() {
-    return Audio.stopRecording();
+    return AudioRecorderManager.stopRecording();
   },
-  checkAuthorizationStatus: Audio.checkAuthorizationStatus,
+  checkAuthorizationStatus: AudioRecorderManager.checkAuthorizationStatus,
   requestAuthorization: () => {
     if (Platform.OS === 'ios')
-      return Audio.requestAuthorization();
+      return AudioRecorderManager.requestAuthorization();
     else
       return new Promise((resolve, reject) => {
         PermissionsAndroid.request(
@@ -113,37 +109,24 @@ var AudioRecorder = {
 };
 
 let AudioUtils = {};
-let AudioSource = {};
 
 if (Platform.OS === 'ios') {
   AudioUtils = {
-    MainBundlePath: Audio.MainBundlePath,
-    CachesDirectoryPath: Audio.NSCachesDirectoryPath,
-    DocumentDirectoryPath: Audio.NSDocumentDirectoryPath,
-    LibraryDirectoryPath: Audio.NSLibraryDirectoryPath,
+    MainBundlePath: AudioRecorderManager.MainBundlePath,
+    CachesDirectoryPath: AudioRecorderManager.NSCachesDirectoryPath,
+    DocumentDirectoryPath: AudioRecorderManager.NSDocumentDirectoryPath,
+    LibraryDirectoryPath: AudioRecorderManager.NSLibraryDirectoryPath,
   };
 } else if (Platform.OS === 'android') {
   AudioUtils = {
-    MainBundlePath: Audio.MainBundlePath,
-    CachesDirectoryPath: Audio.CachesDirectoryPath,
-    DocumentDirectoryPath: Audio.DocumentDirectoryPath,
-    LibraryDirectoryPath: Audio.LibraryDirectoryPath,
-    PicturesDirectoryPath: Audio.PicturesDirectoryPath,
-    MusicDirectoryPath: Audio.MusicDirectoryPath,
-    DownloadsDirectoryPath: Audio.DownloadsDirectoryPath
-  };
-  AudioSource = {
-    DEFAULT: 0,
-    MIC: 1,
-    VOICE_UPLINK: 2,
-    VOICE_DOWNLINK: 3,
-    VOICE_CALL: 4,
-    CAMCORDER: 5,
-    VOICE_RECOGNITION: 6,
-    VOICE_COMMUNICATION: 7,
-    REMOTE_SUBMIX: 8, // added in API 19
-    UNPROCESSED: 9, // added in API 24
+    MainBundlePath: AudioRecorderManager.MainBundlePath,
+    CachesDirectoryPath: AudioRecorderManager.CachesDirectoryPath,
+    DocumentDirectoryPath: AudioRecorderManager.DocumentDirectoryPath,
+    LibraryDirectoryPath: AudioRecorderManager.LibraryDirectoryPath,
+    PicturesDirectoryPath: AudioRecorderManager.PicturesDirectoryPath,
+    MusicDirectoryPath: AudioRecorderManager.MusicDirectoryPath,
+    DownloadsDirectoryPath: AudioRecorderManager.DownloadsDirectoryPath
   };
 }
 
-export  { multiply, AudioRecorder, AudioUtils, AudioSource };
+export { AudioRecorder, AudioUtils };

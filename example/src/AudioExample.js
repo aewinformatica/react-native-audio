@@ -8,6 +8,7 @@ import {
   TouchableHighlight,
   Platform,
   PermissionsAndroid,
+  Button
 } from 'react-native';
 
 import Sound from 'react-native-sound';
@@ -15,7 +16,9 @@ import {AudioRecorder, AudioUtils} from 'react-native-audio';
 
 class AudioExample extends Component {
 
+
     state = {
+      claps:0,
       currentTime: 0.0,
       recording: false,
       paused: false,
@@ -23,6 +26,7 @@ class AudioExample extends Component {
       finished: false,
       audioPath: AudioUtils.DocumentDirectoryPath + '/test.aac',
       hasPermission: undefined,
+      music: null,
     };
 
     prepareRecordingPath(audioPath){
@@ -31,11 +35,22 @@ class AudioExample extends Component {
         Channels: 1,
         AudioQuality: "Low",
         AudioEncoding: "aac",
-        AudioEncodingBitRate: 32000
+        AudioEncodingBitRate: 32000,
+        MeteringEnabled: true
       });
     }
 
     componentDidMount() {
+
+      // Carrega o som de palmas ao montar o componente
+      var clapSound = new Sound('palmas.mp3', Sound.MAIN_BUNDLE, (error) => {
+        if (error) {
+          console.log('Erro ao carregar o som:', error);
+          return;
+        }
+        this.setState({ music : clapSound});
+      });
+
       AudioRecorder.requestAuthorization().then((isAuthorised) => {
         this.setState({ hasPermission: isAuthorised });
 
@@ -43,8 +58,18 @@ class AudioExample extends Component {
 
         this.prepareRecordingPath(this.state.audioPath);
 
-        AudioRecorder.onProgress = (data) => {
-          this.setState({currentTime: Math.floor(data.currentTime)});
+        AudioRecorder.onProgress = ({currentTime, currentMetering}) => {
+
+        console.log(currentMetering);
+
+          // if(currentMetering > 32766 ) this.setState({claps: this.state.claps +1 });
+
+          if (this.state.music && currentMetering > 29766) {
+            this.setState({claps: this.state.claps +1 })
+            this.state.music.play();
+          }
+
+          this.setState({currentTime: Math.floor(currentTime)});
         };
 
         AudioRecorder.onFinished = (data) => {
@@ -183,6 +208,9 @@ class AudioExample extends Component {
       console.log(`Finished recording of duration ${this.state.currentTime} seconds at path: ${filePath} and size of ${fileSize || 0} bytes`);
     }
 
+
+
+
     render() {
 
       return (
@@ -193,7 +221,16 @@ class AudioExample extends Component {
             {this._renderButton("STOP", () => {this._stop()} )}
             {/* {this._renderButton("PAUSE", () => {this._pause()} )} */}
             {this._renderPauseButton(() => {this.state.paused ? this._resume() : this._pause()})}
+            <Text style={styles.progressText}>{this.state.claps}</Text>
             <Text style={styles.progressText}>{this.state.currentTime}s</Text>
+            <Button
+            title="Reproduzir Som de Palmas"
+          onPress={() => {
+          if (this.state.music) {
+            this.state.music.play();
+          }
+        }}
+      />
           </View>
         </View>
       );
